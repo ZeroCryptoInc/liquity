@@ -3,7 +3,7 @@ import { useWeb3React } from "@web3-react/core";
 import { AbstractConnector } from "@web3-react/abstract-connector";
 import { Button, Text, Flex, Link, Box } from "theme-ui";
 
-import { injectedConnector } from "../connectors/injectedConnector";
+import {injectedConnector} from "../connectors/injectedConnector";
 import { useAuthorizedConnection } from "../hooks/useAuthorizedConnection";
 
 import { RetryDialog } from "./RetryDialog";
@@ -11,6 +11,7 @@ import { ConnectionConfirmationDialog } from "./ConnectionConfirmationDialog";
 import { MetaMaskIcon } from "./MetaMaskIcon";
 import { Icon } from "./Icon";
 import { Modal } from "./Modal";
+import {walletConnectConnector, walletConnectConnectorIsAvailable} from "../connectors/walletConnectConnector";
 
 interface MaybeHasMetaMask {
   ethereum?: {
@@ -40,7 +41,7 @@ const connectionReducer: React.Reducer<ConnectionState, ConnectionAction> = (sta
     case "finishActivating":
       return {
         type: "active",
-        connector: state.type === "inactive" ? injectedConnector : state.connector
+        connector: state.type === "inactive" ? walletConnectConnector : state.connector
       };
     case "fail":
       if (state.type !== "inactive") {
@@ -91,6 +92,8 @@ export const WalletConnector: React.FC<WalletConnectorProps> = ({ children, load
   const triedAuthorizedConnection = useAuthorizedConnection();
   const [connectionState, dispatch] = useReducer(connectionReducer, { type: "inactive" });
   const isMetaMask = detectMetaMask();
+  // @ts-ignore
+  const isMetamaskConnection = isMetaMask && connectionState.connector === injectedConnector;
 
   useEffect(() => {
     if (error) {
@@ -117,7 +120,11 @@ export const WalletConnector: React.FC<WalletConnectorProps> = ({ children, load
 
   return (
     <>
-      <Flex sx={{ height: "100vh", justifyContent: "center", alignItems: "center" }}>
+      <Flex sx={{ height: "100vh", justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
+        {walletConnectConnectorIsAvailable() && <Button style={{ marginBottom: 8 }} onClick={() => {
+          dispatch({ type: "startActivating", connector: walletConnectConnector });
+          activate(walletConnectConnector);
+        }}>Connect TrustWallet</Button>}
         <Button
           onClick={() => {
             dispatch({ type: "startActivating", connector: injectedConnector });
@@ -141,19 +148,23 @@ export const WalletConnector: React.FC<WalletConnectorProps> = ({ children, load
       {connectionState.type === "failed" && (
         <Modal>
           <RetryDialog
-            title={isMetaMask ? "Failed to connect to MetaMask" : "Failed to connect wallet"}
+            title={isMetamaskConnection ? "Failed to connect to MetaMask" : "Failed to connect wallet"}
             onCancel={() => dispatch({ type: "cancel" })}
             onRetry={() => {
               dispatch({ type: "retry" });
               activate(connectionState.connector);
             }}
           >
-            <Box sx={{ textAlign: "center" }}>
-              You might need to install MetaMask or use a different browser.
-            </Box>
-            <Link sx={{ lineHeight: 3 }} href="https://metamask.io/download.html" target="_blank">
-              Learn more <Icon size="xs" name="external-link-alt" />
-            </Link>
+            {
+              isMetamaskConnection && <>
+                <Box sx={{ textAlign: "center" }}>
+                  You might need to install MetaMask or use a different browser.
+                </Box>
+                <Link sx={{ lineHeight: 3 }} href="https://metamask.io/download.html" target="_blank">
+                  Learn more <Icon size="xs" name="external-link-alt" />
+                </Link>
+              </>
+            }
           </RetryDialog>
         </Modal>
       )}
@@ -162,14 +173,14 @@ export const WalletConnector: React.FC<WalletConnectorProps> = ({ children, load
         <Modal>
           <ConnectionConfirmationDialog
             title={
-              isMetaMask ? "Confirm connection in MetaMask" : "Confirm connection in your wallet"
+              isMetamaskConnection ? "Confirm connection in MetaMask" : "Confirm connection in your wallet"
             }
-            icon={isMetaMask ? <MetaMaskIcon /> : <Icon name="wallet" size="lg" />}
+            icon={isMetamaskConnection ? <MetaMaskIcon /> : <Icon name="wallet" size="lg" />}
             onCancel={() => dispatch({ type: "cancel" })}
           >
             <Text sx={{ textAlign: "center" }}>
               Confirm the request that&apos;s just appeared.
-              {isMetaMask ? (
+              {isMetamaskConnection ? (
                 <> If you can&apos;t see a request, open your MetaMask extension via your browser.</>
               ) : (
                 <> If you can&apos;t see a request, you might have to open your wallet.</>
