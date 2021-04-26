@@ -124,7 +124,10 @@ export const WalletConnector: React.FC<WalletConnectorProps> = ({ children, load
         {walletConnectConnectorIsAvailable() && <Button style={{ marginBottom: 8 }} onClick={() => {
           dispatch({ type: "startActivating", connector: walletConnectConnector });
           activate(walletConnectConnector);
-        }}>Connect TrustWallet</Button>}
+        }}>
+          <img src="./trust-wallet.png" alt="" style={{ width: 24, height: 24 }}/>
+          <Box sx={{ ml: 2 }}>Connect TrustWallet</Box>
+        </Button>}
         <Button
           onClick={() => {
             dispatch({ type: "startActivating", connector: injectedConnector });
